@@ -15,15 +15,106 @@
       background: linear-gradient(135deg, #667eea, #764ba2);
       color: #fff;
       text-align: center;
+      padding: 16px;
+      box-sizing: border-box;
     }
+    main { width: 100%; max-width: 480px; }
     h1 { font-size: 3rem; margin-bottom: 0.5rem; }
     p { font-size: 1.2rem; opacity: 0.9; }
+    form, .msg {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 16px;
+      text-align: left;
+    }
+    input, textarea, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      margin-top: 8px;
+      border: none;
+      border-radius: 8px;
+      font: inherit;
+    }
+    button { background: #fff; color: #764ba2; font-weight: bold; cursor: pointer; }
+    .msg strong { display: block; }
+    .msg small { opacity: 0.7; }
+    #status { min-height: 1.2em; font-size: 0.95rem; }
   </style>
 </head>
 <body>
   <main>
     <h1>Xin chào! 👋</h1>
     <p>Chào mừng bạn đến với trang web của tôi.</p>
+
+    <form id="form">
+      <strong>Để lại lời nhắn</strong>
+      <input id="name" placeholder="Tên của bạn" maxlength="50">
+      <textarea id="text" rows="3" placeholder="Lời nhắn..." maxlength="500"></textarea>
+      <button type="submit">Gửi</button>
+      <div id="status"></div>
+    </form>
+
+    <div id="list"></div>
   </main>
+
+  <script>
+    const list = document.getElementById("list");
+    const status = document.getElementById("status");
+
+    function render(messages) {
+      list.innerHTML = "";
+      for (const m of messages) {
+        const div = document.createElement("div");
+        div.className = "msg";
+        const name = document.createElement("strong");
+        name.textContent = m.name;
+        const text = document.createElement("div");
+        text.textContent = m.text;
+        const time = document.createElement("small");
+        time.textContent = new Date(m.time).toLocaleString("vi-VN");
+        div.append(name, text, time);
+        list.append(div);
+      }
+    }
+
+    // Hỏi máy chủ Node.js danh sách lời nhắn
+    async function load() {
+      try {
+        const res = await fetch("/api/messages");
+        render(await res.json());
+      } catch {
+        status.textContent = location.protocol === "file:"
+          ? "Bạn đang mở file trực tiếp. Hãy chạy node server.js rồi mở http://localhost:3000"
+          : "Chưa kết nối được máy chủ. Hãy chạy: node server.js";
+      }
+    }
+
+    // Gửi lời nhắn mới lên máy chủ Node.js
+    document.getElementById("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      status.textContent = "Đang gửi...";
+      try {
+        const res = await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: document.getElementById("name").value,
+            text: document.getElementById("text").value,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        status.textContent = "Đã gửi! ✅";
+        document.getElementById("text").value = "";
+        load();
+      } catch (err) {
+        status.textContent = "Lỗi: " + (err.message || "không gửi được");
+      }
+    });
+
+    load();
+  </script>
 </body>
 </html>
